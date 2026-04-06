@@ -186,16 +186,16 @@ python inference.py
 
 ## Baseline Scores
 
-Local deterministic fallback baseline:
+Verified local deterministic fallback baseline:
 
 | Task | Score |
 | --- | ---: |
 | `clean_refactor_approve` | `1.000` |
-| `secret_leak_reject` | `1.000` |
+| `secret_leak_reject` | `0.950` |
 | `auth_policy_reject` | `1.000` |
-| Average | `1.000` |
+| Average | `0.983` |
 
-These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. Live model scores will depend on the selected model and endpoint.
+These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. In the verified local run, the full script completed in under 2 minutes using the local Docker image. Live model scores will depend on the selected model and endpoint.
 
 ## Deployment to Hugging Face Spaces
 
@@ -213,4 +213,3 @@ After deployment, validate the running Space:
 ```bash
 openenv validate https://your-space.hf.space
 ```
-
