@@ -1,0 +1,15 @@
+.git
+.venv
+.uv-cache
+__pycache__
+.pytest_cache
+.mypy_cache
+*.pyc
+*.pyo
+*.pyd
+dist
+build
+*.egg-info
+pytest-cache-files-*
+outputs/logs
+outputs/evals

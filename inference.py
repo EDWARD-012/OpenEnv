@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover
     from task_fixtures import list_task_ids
 
 
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or "dummy-token"
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
 MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
 LOCAL_IMAGE_NAME = (
@@ -291,4 +291,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
