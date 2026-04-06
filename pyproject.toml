@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-code-review-env"
+version = "0.1.0"
+description = "Deterministic automated code review environment for OpenEnv."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "openenv-core[core]>=0.2.2",
+    "openai>=2.30.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+]
+
+[project.scripts]
+server = "code_review_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["code_review_env", "code_review_env.server", "code_review_env.engines"]
+package-dir = { "code_review_env" = ".", "code_review_env.server" = "server", "code_review_env.engines" = "engines" }
+
+[tool.setuptools.package-data]
+code_review_env = ["fixtures/tasks/*.json", "README.md", "openenv.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

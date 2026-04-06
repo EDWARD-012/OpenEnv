@@ -1,0 +1,74 @@
+{
+  "task_id": "clean_refactor_approve",
+  "title": "Approve a safe refactor after checking the right evidence",
+  "difficulty": "easy",
+  "objective": "Review the pull request and decide whether it should be approved or rejected.",
+  "max_steps": 8,
+  "pull_request": {
+    "pr_number": 41,
+    "title": "Refactor formatter helpers and refresh inline docs",
+    "author": "devon",
+    "target_branch": "main",
+    "description": "This PR extracts duplicated formatting logic, renames a helper for clarity, and updates the usage notes. No product behavior should change.",
+    "summary": "A low-risk refactor touching formatting helpers and documentation. The intended outcome is approval after a quick but structured review.",
+    "changed_files": [
+      {
+        "path": "src/formatting/formatter.py",
+        "summary": "Moves duplicate string normalization into a shared helper.",
+        "diff": "@@ -12,10 +12,16 @@\n-def format_currency(value):\n-    normalized = str(value).strip()\n-    return normalized.replace(\"USD\", \"$\")\n+def normalize_currency_label(value):\n+    normalized = str(value).strip()\n+    return normalized.replace(\"USD\", \"$\")\n+\n+def format_currency(value):\n+    return normalize_currency_label(value)\n"
+      },
+      {
+        "path": "docs/formatter.md",
+        "summary": "Updates the formatter usage guide to match the helper rename.",
+        "diff": "@@ -3,6 +3,6 @@\n-Call format_currency(value) directly.\n+Call format_currency(value) directly; internals now reuse normalize_currency_label().\n"
+      }
+    ]
+  },
+  "policy_text": [
+    "Approve refactors when tests pass and no blocker findings are present.",
+    "Avoid blocking comments for naming or style-only cleanups unless behavior changes."
+  ],
+  "findings": [
+    {
+      "finding_id": "doc_sync_note",
+      "source": "ai_review",
+      "title": "Documentation is consistent with the rename",
+      "severity": "info",
+      "file_path": "docs/formatter.md",
+      "line": 3,
+      "description": "The docs update matches the helper rename and does not introduce risk.",
+      "required": false,
+      "false_positive": false
+    }
+  ],
+  "static_analysis": {
+    "summary": "Static analysis completed successfully with no actionable findings.",
+    "finding_ids": []
+  },
+  "test_results": {
+    "status": "passed",
+    "summary": "All 14 unit and lint checks passed.",
+    "checks": ["unit", "lint", "type-check"],
+    "finding_ids": []
+  },
+  "ai_review": {
+    "summary": "AI reviewer found no regressions and recommends approval after confirming tests.",
+    "finding_ids": ["doc_sync_note"]
+  },
+  "expected_decision": "approve",
+  "required_comment_ids": [],
+  "inspect_rewards": {
+    "src/formatting/formatter.py": 0.15
+  },
+  "reward_weights": {
+    "view_pr": 0.1,
+    "inspect_file": 0.15,
+    "run_static_analysis": 0.1,
+    "run_tests": 0.15,
+    "read_policy": 0.1,
+    "request_ai_review": 0.05,
+    "comment_required_finding": 0.0,
+    "decision": 0.35
+  }
+}
+

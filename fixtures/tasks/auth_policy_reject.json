@@ -1,0 +1,101 @@
+{
+  "task_id": "auth_policy_reject",
+  "title": "Reject an auth change with a real blocker and one false positive",
+  "difficulty": "hard",
+  "objective": "Review a sensitive auth change, separate the true blocker from the noise, and reject the PR with the required coverage.",
+  "max_steps": 8,
+  "pull_request": {
+    "pr_number": 77,
+    "title": "Relax admin scope checks for support impersonation",
+    "author": "nina",
+    "target_branch": "main",
+    "description": "Allows support staff to impersonate accounts without the existing admin scope gate so ticket resolution is faster.",
+    "summary": "A sensitive authorization change removes an admin scope check and ships without the required auth regression coverage. One static analysis warning is a false positive.",
+    "changed_files": [
+      {
+        "path": "auth/middleware.py",
+        "summary": "Bypasses the admin scope gate during support impersonation.",
+        "diff": "@@ -44,9 +44,8 @@\n def can_impersonate(user):\n-    if not user.has_scope(\"admin:impersonate\"):\n-        return False\n-    return user.role in {\"admin\", \"support\"}\n+    return user.role in {\"admin\", \"support\"}\n"
+      },
+      {
+        "path": "tests/test_auth.py",
+        "summary": "Adds a happy-path support impersonation test but omits the missing-scope regression case.",
+        "diff": "@@ -10,3 +10,7 @@\n def test_support_can_impersonate_when_flag_enabled():\n     assert can_impersonate(make_support_user(flag=True)) is True\n+\n+# Missing: regression test asserting support without admin scope is rejected\n"
+      },
+      {
+        "path": "docs/security-review.md",
+        "summary": "Mentions that security sign-off will happen later.",
+        "diff": "@@ -2,3 +2,4 @@\n Security review owner: pending\n+Follow-up review planned after merge\n"
+      }
+    ]
+  },
+  "policy_text": [
+    "Auth or permission changes require regression tests for denied paths before merge.",
+    "Any change to impersonation or scope checks requires security sign-off before approval."
+  ],
+  "findings": [
+    {
+      "finding_id": "auth_scope_gap",
+      "source": "ai_review",
+      "title": "Admin scope gate removed",
+      "severity": "high",
+      "file_path": "auth/middleware.py",
+      "line": 44,
+      "description": "Support users can now impersonate without the admin:impersonate scope, creating an authorization gap.",
+      "required": true,
+      "false_positive": false
+    },
+    {
+      "finding_id": "missing_auth_tests",
+      "source": "test_runner",
+      "title": "Denied-path regression coverage is missing",
+      "severity": "medium",
+      "file_path": "tests/test_auth.py",
+      "line": 12,
+      "description": "The PR omits the negative regression test required for auth and impersonation changes.",
+      "required": true,
+      "false_positive": false
+    },
+    {
+      "finding_id": "unused_session_variable",
+      "source": "static_analysis",
+      "title": "Unused local session variable",
+      "severity": "low",
+      "file_path": "auth/middleware.py",
+      "line": 47,
+      "description": "A style warning reports an unused local variable in a nearby helper, but it is unrelated to merge safety.",
+      "required": false,
+      "false_positive": true
+    }
+  ],
+  "static_analysis": {
+    "summary": "Static analysis surfaced one low-severity warning that is not merge-blocking.",
+    "finding_ids": ["unused_session_variable"]
+  },
+  "test_results": {
+    "status": "failed",
+    "summary": "Auth suite highlights missing denied-path coverage for impersonation checks.",
+    "checks": ["unit", "auth-regression"],
+    "finding_ids": ["missing_auth_tests"]
+  },
+  "ai_review": {
+    "summary": "AI review flags that the admin scope gate was removed from a sensitive authorization path.",
+    "finding_ids": ["auth_scope_gap"]
+  },
+  "expected_decision": "reject",
+  "required_comment_ids": ["auth_scope_gap", "missing_auth_tests"],
+  "inspect_rewards": {
+    "auth/middleware.py": 0.1
+  },
+  "reward_weights": {
+    "view_pr": 0.05,
+    "inspect_file": 0.1,
+    "run_static_analysis": 0.05,
+    "run_tests": 0.1,
+    "read_policy": 0.1,
+    "request_ai_review": 0.1,
+    "comment_required_finding": 0.2,
+    "decision": 0.3
+  }
+}
+
