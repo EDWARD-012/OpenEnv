@@ -1,6 +1,6 @@
 ---
 title: Automated Code Review Environment
-emoji: review
+emoji: "🔍"
 colorFrom: blue
 colorTo: indigo
 sdk: docker
