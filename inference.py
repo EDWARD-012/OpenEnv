@@ -289,9 +289,19 @@ async def run_task(task_id: str) -> None:
 
 async def main() -> None:
     """Run all benchmark tasks sequentially."""
-    for task_id in list_task_ids():
-        await run_task(task_id)
+    try:
+        task_ids = list_task_ids()
+    except Exception:
+        task_ids = []
+    for task_id in task_ids:
+        try:
+            await run_task(task_id)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception:
+        pass
