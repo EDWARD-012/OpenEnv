@@ -231,9 +231,7 @@ def choose_action(client: OpenAI, task_id: str, step: int, observation: Any, his
 
 async def run_task(task_id: str) -> None:
     """Run one benchmark task and emit structured stdout."""
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    env = await CodeReviewEnv.from_docker_image(LOCAL_IMAGE_NAME)
-
+    env: CodeReviewEnv | None = None
     history: list[str] = []
     rewards: list[float] = []
     steps_taken = 0
@@ -243,6 +241,8 @@ async def run_task(task_id: str) -> None:
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     try:
+        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+        env = await CodeReviewEnv.from_docker_image(LOCAL_IMAGE_NAME)
         result = await env.reset(task_id=task_id)
 
         for step in range(1, MAX_STEPS + 1):
@@ -276,11 +276,15 @@ async def run_task(task_id: str) -> None:
         except Exception:
             score = min(max(sum(rewards), 0.0), 1.0)
         success = score >= SUCCESS_SCORE_THRESHOLD
+    except Exception:
+        score = min(max(sum(rewards), 0.0), 1.0)
     finally:
         try:
-            await env.close()
-        finally:
-            log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+            if env is not None:
+                await env.close()
+        except Exception:
+            pass
+        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
 async def main() -> None:
