@@ -284,6 +284,8 @@ async def run_task(task_id: str) -> None:
                 await env.close()
         except Exception:
             pass
+        # Validator requires score strictly in (0, 1) — never exactly 0.0 or 1.0
+        score = round(min(max(score, 0.001), 0.999), 4)
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 

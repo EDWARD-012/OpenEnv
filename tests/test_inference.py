@@ -43,7 +43,7 @@ def test_run_task_handles_env_start_failure(monkeypatch, capsys) -> None:
     output = capsys.readouterr().out.strip().splitlines()
     assert len(output) == 2
     assert output[0].startswith("[START] task=clean_refactor_approve ")
-    assert output[1] == "[END] success=false steps=0 score=0.000 rewards="
+    assert output[1] == "[END] success=false steps=0 score=0.001 rewards="
 
 
 # ---------------------------------------------------------------------------
@@ -90,9 +90,9 @@ def test_log_end_format(capsys) -> None:
 
 
 def test_log_end_false_and_empty_rewards(capsys) -> None:
-    inference.log_end(success=False, steps=0, score=0.0, rewards=[])
+    inference.log_end(success=False, steps=0, score=0.001, rewards=[])
     out = capsys.readouterr().out.strip()
-    assert out == "[END] success=false steps=0 score=0.000 rewards="
+    assert out == "[END] success=false steps=0 score=0.001 rewards="
 
 
 def test_choose_action_falls_back_when_api_raises(monkeypatch) -> None:
