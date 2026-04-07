@@ -17,12 +17,8 @@ def weight(task: TaskConfig, key: str) -> float:
 
 
 def clamp_reward(value: float) -> float:
-    """Clamp reward values into the submission-safe (0.001, 0.999) open range.
-
-    The platform validator rejects scores of exactly 0.0 or 1.0, so we keep
-    all rewards strictly within the open interval (0, 1).
-    """
-    return round(min(max(value, 0.001), 0.999), 4)
+    """Clamp reward values into the [0.0, 1.0] range for stable step-level scoring."""
+    return round(min(max(value, 0.0), 1.0), 4)
 
 
 def comment_reward(task: TaskConfig, newly_covered_required: int) -> float:
