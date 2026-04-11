@@ -10,12 +10,12 @@ from typing import Any, Iterable
 from openai import OpenAI
 
 try:
-    from code_review_env import CodeReviewAction, CodeReviewEnv
-    from code_review_env.task_fixtures import list_task_ids
+    from code_review_env import CodeReviewAction, CodeReviewEnv  # type: ignore[import-not-found]
+    from code_review_env.task_fixtures import list_task_ids  # type: ignore[import-not-found]
 except ImportError:  # pragma: no cover
-    from client import CodeReviewEnv
-    from models import CodeReviewAction
-    from task_fixtures import list_task_ids
+    from client import CodeReviewEnv  # type: ignore[import-not-found]
+    from models import CodeReviewAction  # type: ignore[import-not-found]
+    from task_fixtures import list_task_ids  # type: ignore[import-not-found]
 
 
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or "dummy-token"
