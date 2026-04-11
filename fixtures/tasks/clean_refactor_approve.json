@@ -14,13 +14,13 @@
     "changed_files": [
       {
         "path": "src/formatting/formatter.py",
-        "summary": "Moves duplicate string normalization into a shared helper.",
-        "diff": "@@ -12,10 +12,16 @@\n-def format_currency(value):\n-    normalized = str(value).strip()\n-    return normalized.replace(\"USD\", \"$\")\n+def normalize_currency_label(value):\n+    normalized = str(value).strip()\n+    return normalized.replace(\"USD\", \"$\")\n+\n+def format_currency(value):\n+    return normalize_currency_label(value)\n"
+        "summary": "Extracts duplicated string normalization into a shared normalize_currency_label() helper and updates all three call sites to use it. No behavioral change.",
+        "diff": "@@ -1,42 +1,48 @@\n \"\"\"Currency and number formatting utilities.\"\"\"\n \n from decimal import Decimal\n from typing import Union\n \n Number = Union[int, float, Decimal]\n \n \n-def format_currency(value: Number) -> str:\n-    \"\"\"Format a numeric value as a display currency string.\"\"\"\n-    normalized = str(value).strip()\n-    return normalized.replace('USD', '$')\n-\n-\n-def format_invoice_total(value: Number) -> str:\n-    \"\"\"Format the invoice total line item.\"\"\"\n-    normalized = str(value).strip()\n-    return 'Total: ' + normalized.replace('USD', '$')\n-\n-\n-def format_receipt_amount(value: Number) -> str:\n-    \"\"\"Format the receipt summary amount.\"\"\"\n-    normalized = str(value).strip()\n-    return normalized.replace('USD', '$') + ' (paid)'\n+def normalize_currency_label(value: Number) -> str:\n+    \"\"\"Normalize a numeric value to a display-ready currency string.\"\"\"\n+    normalized = str(value).strip()\n+    return normalized.replace('USD', '$')\n+\n+\n+def format_currency(value: Number) -> str:\n+    \"\"\"Format a numeric value as a display currency string.\"\"\"\n+    return normalize_currency_label(value)\n+\n+\n+def format_invoice_total(value: Number) -> str:\n+    \"\"\"Format the invoice total line item.\"\"\"\n+    return 'Total: ' + normalize_currency_label(value)\n+\n+\n+def format_receipt_amount(value: Number) -> str:\n+    \"\"\"Format the receipt summary amount.\"\"\"\n+    return normalize_currency_label(value) + ' (paid)'\n"
       },
       {
         "path": "docs/formatter.md",
-        "summary": "Updates the formatter usage guide to match the helper rename.",
-        "diff": "@@ -3,6 +3,6 @@\n-Call format_currency(value) directly.\n+Call format_currency(value) directly; internals now reuse normalize_currency_label().\n"
+        "summary": "Updates the formatter usage guide to document the new normalize_currency_label() helper and mark the old duplication pattern as deprecated.",
+        "diff": "@@ -1,12 +1,18 @@\n # Formatter Utilities\n \n-Call format_currency(value) directly.\n-Duplicate normalization logic lives in format_invoice_total and\n-format_receipt_amount.\n+## Currency Formatting\n+\n+Call `format_currency(value)` to format any numeric value.\n+Internally, all three formatters now share `normalize_currency_label()`.\n+\n+### normalize_currency_label(value)\n+\n+Low-level helper that strips whitespace and substitutes the USD symbol.\n+Direct use is discouraged outside the formatting module.\n+\n ## Linting\n \n Run `pylint src/formatting/` to verify no regressions."
       }
     ]
   },
@@ -58,7 +58,8 @@
   "expected_decision": "approve",
   "required_comment_ids": [],
   "inspect_rewards": {
-    "src/formatting/formatter.py": 0.15
+    "src/formatting/formatter.py": 0.15,
+    "docs/formatter.md": 0.05
   },
   "reward_weights": {
     "view_pr": 0.1,

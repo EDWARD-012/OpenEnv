@@ -14,6 +14,7 @@ TASK_ORDER = [
     "clean_refactor_approve",
     "secret_leak_reject",
     "auth_policy_reject",
+    "dependency_confusion_reject",
 ]
 
 

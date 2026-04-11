@@ -78,6 +78,10 @@ Medium task. A production analytics token is committed directly into source code
 
 Hard task. An impersonation change removes a required admin scope check, misses denied-path regression coverage, and includes one misleading low-severity warning. The correct outcome is rejection with coverage of both required findings while not confusing the false positive with a blocker.
 
+### 4. `dependency_confusion_reject`
+
+Hard task. A dependency PR adds a package whose name matches an internal library but resolves to an unverified public PyPI owner — a classic supply-chain dependency confusion attack. A second dependency is unpinned. The correct outcome is rejection with a blocking comment on the shadowed package, ignoring the lower-severity unpinned dep as the primary blocker.
+
 ## Reward Design
 
 Rewards are deterministic and normalized to `[0.0, 1.0]` across the full episode.
@@ -191,11 +195,12 @@ Verified local deterministic fallback baseline:
 | Task | Score |
 | --- | ---: |
 | `clean_refactor_approve` | `1.000` |
-| `secret_leak_reject` | `0.950` |
+| `secret_leak_reject` | `1.000` |
 | `auth_policy_reject` | `1.000` |
-| Average | `0.983` |
+| `dependency_confusion_reject` | `1.000` |
+| Average | `1.000` |
 
-These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. In the verified local run, the full script completed in under 2 minutes using the local Docker image. Live model scores will depend on the selected model and endpoint.
+These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. In the verified local run, the full script completed in under 3 minutes using the local Docker image. Live model scores will depend on the selected model and endpoint.
 
 ## Deployment to Hugging Face Spaces
 

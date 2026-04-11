@@ -77,23 +77,51 @@ def log_end(success: bool, steps: int, score: float, rewards: Iterable[float]) -
 
 def build_user_prompt(task_id: str, step: int, observation: Any, history: list[str]) -> str:
     """Build the user prompt shown to the LLM."""
-    findings = ", ".join(f.finding_id for f in observation.discovered_findings) or "none"
+    findings_detail = ", ".join(
+        f"{f.finding_id}({f.severity})" for f in observation.discovered_findings
+    ) or "none"
     artifacts = ", ".join(a.artifact_type for a in observation.revealed_artifacts) or "none"
-    comments = len(observation.comments_posted)
+    comments_posted = [
+        f"{c.finding_ids}: {c.comment_text[:80]}" for c in observation.comments_posted
+    ]
+    comments_block = "\n".join(comments_posted) if comments_posted else "none"
+
+    # Include the most recent artifact's content as context (truncated)
+    last_artifact_snippet = "none"
+    if observation.revealed_artifacts:
+        last = observation.revealed_artifacts[-1]
+        snippet = " ".join(last.content.splitlines()).strip()[:500]
+        last_artifact_snippet = f"[{last.artifact_type}] {snippet}"
+
+    # Highlight findings still needing a comment
+    covered_ids = {
+        fid
+        for c in observation.comments_posted
+        for fid in (c.finding_ids or [])
+    }
+    required_ids = {
+        f.finding_id for f in observation.discovered_findings if f.required
+    }
+    uncovered = required_ids - covered_ids
+    uncovered_block = ", ".join(sorted(uncovered)) if uncovered else "none"
+
     history_block = "\n".join(history[-5:]) if history else "none"
     return (
         f"Task ID: {task_id}\n"
-        f"Step: {step}\n"
+        f"Step: {step} / Remaining: {observation.remaining_steps}\n"
         f"Objective: {observation.objective}\n"
         f"PR Summary: {observation.pr_summary}\n"
         f"Changed Files: {', '.join(observation.changed_files)}\n"
-        f"Discovered Findings: {findings}\n"
-        f"Artifacts: {artifacts}\n"
-        f"Comments Posted: {comments}\n"
-        f"Remaining Steps: {observation.remaining_steps}\n"
+        f"Revealed Artifact Types: {artifacts}\n"
+        f"Latest Artifact Content: {last_artifact_snippet}\n"
+        f"Discovered Findings: {findings_detail}\n"
+        f"Uncovered Required Findings: {uncovered_block}\n"
+        f"Comments Posted:\n{comments_block}\n"
         f"Last Action Error: {observation.last_action_error or 'none'}\n"
         f"Recent History:\n{history_block}\n"
-        "Return the next action as JSON only."
+        "IMPORTANT: Do not repeat an action already in history. "
+        "Cover all uncovered required findings before set_decision. "
+        "Return the next action as a single JSON object only."
     )
 
 
@@ -167,6 +195,8 @@ def fallback_action(task_id: str, observation: Any) -> CodeReviewAction:
             )
         if "static_analysis" not in revealed:
             return CodeReviewAction(action_type="run_static_analysis")
+        if "tests" not in revealed:
+            return CodeReviewAction(action_type="run_tests")
         if "policy" not in revealed:
             return CodeReviewAction(action_type="read_policy")
         if "ai_review" not in revealed:
@@ -177,6 +207,29 @@ def fallback_action(task_id: str, observation: Any) -> CodeReviewAction:
                 file_path="config/settings.py",
                 finding_ids=["hardcoded_secret"],
                 comment_text="Blocking: remove the hardcoded production token and load it from environment configuration before merge.",
+            )
+        return CodeReviewAction(action_type="set_decision", decision="reject")
+
+    if task_id == "dependency_confusion_reject":
+        if "file_diff" not in revealed:
+            return CodeReviewAction(
+                action_type="inspect_file",
+                file_path="requirements.txt",
+            )
+        if "static_analysis" not in revealed:
+            return CodeReviewAction(action_type="run_static_analysis")
+        if "tests" not in revealed:
+            return CodeReviewAction(action_type="run_tests")
+        if "policy" not in revealed:
+            return CodeReviewAction(action_type="read_policy")
+        if "ai_review" not in revealed:
+            return CodeReviewAction(action_type="request_ai_review")
+        if "shadowed_internal_package" in findings and not comment_covers(observation, "shadowed_internal_package"):
+            return CodeReviewAction(
+                action_type="submit_comment",
+                file_path="requirements.txt",
+                finding_ids=["shadowed_internal_package"],
+                comment_text="Blocking: the package name shadows an internal library and resolves to a public PyPI package owned by an unknown author. Remove or pin to the verified internal index before merge.",
             )
         return CodeReviewAction(action_type="set_decision", decision="reject")
 
