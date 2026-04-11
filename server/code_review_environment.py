@@ -28,7 +28,7 @@ try:
         missing_required_ids,
         required_comment_ids,
     )
-    from ..scoring import clamp_reward, comment_reward, decision_reward, remaining_budget, weight
+    from ..scoring import clamp_reward, comment_reward, decision_reward, remaining_budget, step_efficiency_score, weight
     from ..task_fixtures import default_task, file_map, findings_for_ids, load_task
 except ImportError:  # pragma: no cover
     from engines.ai_reviewer import build_report as build_ai_review_report
@@ -50,7 +50,7 @@ except ImportError:  # pragma: no cover
         missing_required_ids,
         required_comment_ids,
     )
-    from scoring import clamp_reward, comment_reward, decision_reward, remaining_budget, weight
+    from scoring import clamp_reward, comment_reward, decision_reward, remaining_budget, step_efficiency_score, weight
     from task_fixtures import default_task, file_map, findings_for_ids, load_task
 
 
@@ -339,6 +339,11 @@ class CodeReviewEnvironment(Environment[CodeReviewAction, CodeReviewObservation,
             if error is None:
                 error = "Step budget exhausted before final decision"
 
+        if done and self._state.efficiency_score == 0.0:
+            self._state.efficiency_score = step_efficiency_score(
+                self._state.step_count, self._task["max_steps"]
+            )
+
         return self._observation(reward=reward, done=done, error=error)
 
     @property
@@ -349,10 +354,14 @@ class CodeReviewEnvironment(Environment[CodeReviewAction, CodeReviewObservation,
         return EnvironmentMetadata(
             name="Automated Code Review Environment",
             description=(
-                "A deterministic pull request review simulator with static analysis, "
-                "policy checks, AI review notes, and structured reward shaping."
+                "A deterministic pull-request review simulator covering five task categories: "
+                "safe refactors, hardcoded secret leaks, authorization regressions, "
+                "supply-chain dependency confusion, and license compliance violations. "
+                "Rewards are partial-progress and normalized to [0, 1]. "
+                "The state() API exposes cumulative_reward, discovered findings, "
+                "checks run, comments posted, action history, and a step-efficiency score."
             ),
-            version="0.1.0",
+            version="0.2.0",
             author="Ravi Kumar Gupta",
         )
 

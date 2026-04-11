@@ -82,6 +82,10 @@ Hard task. An impersonation change removes a required admin scope check, misses 
 
 Hard task. A dependency PR adds a package whose name matches an internal library but resolves to an unverified public PyPI owner — a classic supply-chain dependency confusion attack. A second dependency is unpinned. The correct outcome is rejection with a blocking comment on the shadowed package, ignoring the lower-severity unpinned dep as the primary blocker.
 
+### 5. `license_compliance_reject`
+
+Medium task. A PR adds `analytics-toolkit`, which is GPL-3.0 licensed, to an MIT project. The correct outcome is rejection with a blocking comment on the license incompatibility. Two non-required findings (unpinned version, missing opt-out) test whether the agent can distinguish blockers from advisory notes.
+
 ## Reward Design
 
 Rewards are deterministic and normalized to `[0.0, 1.0]` across the full episode.
@@ -91,6 +95,7 @@ Rewards are deterministic and normalized to `[0.0, 1.0]` across the full episode
 - posting comments that cover required findings earns structured reward
 - duplicate or wasteful actions consume steps and usually earn `0.0`
 - final decision reward depends on correctness and required finding coverage
+- a **step-efficiency score** is computed separately at episode end: `1.0` for solving in one step, `0.0` when all steps are exhausted — visible via the `state()` API
 
 An optimal trajectory reaches a cumulative reward of `1.0`.
 
@@ -198,9 +203,10 @@ Verified local deterministic fallback baseline:
 | `secret_leak_reject` | `1.000` |
 | `auth_policy_reject` | `1.000` |
 | `dependency_confusion_reject` | `1.000` |
-| Average | `1.000` |
+| `license_compliance_reject` | `1.000` |
+| **Average** | **`1.000`** |
 
-These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. In the verified local run, the full script completed in under 3 minutes using the local Docker image. Live model scores will depend on the selected model and endpoint.
+These scores come from the built-in structured fallback policy used when the live model output is invalid or unavailable. In the verified local run, the full script completed in under 4 minutes using the local Docker image. Live model scores will depend on the selected model and endpoint.
 
 ## Deployment to Hugging Face Spaces
 

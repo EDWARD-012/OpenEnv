@@ -1,0 +1,103 @@
+{
+  "task_id": "license_compliance_reject",
+  "title": "Reject a dependency that violates the project license policy",
+  "difficulty": "medium",
+  "objective": "Identify that a newly added dependency is licensed under GPL-3.0, which is incompatible with this project's MIT license, post a blocking comment, and reject the PR.",
+  "max_steps": 10,
+  "pull_request": {
+    "pr_number": 134,
+    "title": "Add analytics-toolkit for usage metrics collection",
+    "author": "priya",
+    "target_branch": "main",
+    "description": "Integrates analytics-toolkit to collect anonymized usage metrics. The library provides a clean API and is well-maintained on PyPI.",
+    "summary": "A dependency PR adds analytics-toolkit which is licensed under GPL-3.0. This project is MIT-licensed. Including any GPL dependency in a non-GPL project creates a license incompatibility that blocks distribution. The correct outcome is rejection with a blocking comment on the incompatible dependency.",
+    "changed_files": [
+      {
+        "path": "requirements.txt",
+        "summary": "Adds analytics-toolkit as a new runtime dependency without pinning to an exact version.",
+        "diff": "@@ -8,6 +8,10 @@ httpx==0.27.0\n pydantic==2.5.3\n structlog==23.3.0\n tenacity==8.2.3\n+\n+# Usage metrics collection\n+analytics-toolkit>=2.1\n+\n # Dev dependencies — do not add to production containers\n pytest==7.4.2\n pytest-httpx==0.28.0"
+      },
+      {
+        "path": "src/telemetry/metrics.py",
+        "summary": "New module that initialises analytics-toolkit and exposes collect_event() for usage tracking.",
+        "diff": "@@ -0,0 +1,38 @@\n+\"\"\"Usage metrics collection using analytics-toolkit.\"\"\"\n+\n+from __future__ import annotations\n+\n+import logging\n+from typing import Any\n+\n+try:\n+    from analytics_toolkit import MetricsClient, MetricsConfig  # type: ignore[import]\n+except ImportError as exc:\n+    raise RuntimeError(\n+        \"analytics-toolkit is required. Install it via: pip install analytics-toolkit\"\n+    ) from exc\n+\n+_logger = logging.getLogger(__name__)\n+_client: MetricsClient | None = None\n+\n+\n+def initialise(endpoint: str, project_id: str) -> None:\n+    \"\"\"Initialise the global metrics client.\"\"\"\n+    global _client\n+    config = MetricsConfig(endpoint=endpoint, project_id=project_id)\n+    _client = MetricsClient(config)\n+    _logger.info(\"Metrics client initialised for project %s\", project_id)\n+\n+\n+def collect_event(name: str, properties: dict[str, Any] | None = None) -> None:\n+    \"\"\"Emit a single usage event.\"\"\"\n+    if _client is None:\n+        _logger.debug(\"Metrics client not initialised; dropping event %s\", name)\n+        return\n+    _client.emit(name, properties or {})\n+\n+\n+def shutdown() -> None:\n+    \"\"\"Flush pending events and release resources.\"\"\"\n+    if _client is not None:\n+        _client.flush()\n+        _logger.info(\"Metrics client shut down cleanly\")\n"
+      },
+      {
+        "path": "LICENSE",
+        "summary": "Project is MIT licensed. No changes were made to the license file itself.",
+        "diff": "@@ -1,4 +1,4 @@\n MIT License\n \n-Copyright (c) 2024 Openenv Contributors\n+Copyright (c) 2024 Openenv Contributors  # unchanged\n"
+      }
+    ]
+  },
+  "policy_text": [
+    "All third-party dependencies must be compatible with this project's MIT license before merging.",
+    "GPL, AGPL, or LGPL licensed packages must not be added to the production dependency list.",
+    "License incompatibilities are release blockers and require a reject decision with a comment.",
+    "Dependencies must be pinned to an exact version to ensure reproducible builds."
+  ],
+  "findings": [
+    {
+      "finding_id": "license_incompatibility",
+      "source": "static_analysis",
+      "title": "GPL-3.0 dependency incompatible with MIT project license",
+      "severity": "critical",
+      "file_path": "requirements.txt",
+      "line": 11,
+      "description": "analytics-toolkit is released under GPL-3.0. Including it in an MIT-licensed project creates a license incompatibility that prevents distribution under the current license terms. This requires rejection until a compatible alternative is found.",
+      "required": true,
+      "false_positive": false
+    },
+    {
+      "finding_id": "unpinned_version",
+      "source": "static_analysis",
+      "title": "analytics-toolkit is not pinned to an exact version",
+      "severity": "low",
+      "file_path": "requirements.txt",
+      "line": 11,
+      "description": "'analytics-toolkit>=2.1' allows any future major version. Policy requires exact pinning. This is a secondary concern — the license incompatibility is the primary blocker.",
+      "required": false,
+      "false_positive": false
+    },
+    {
+      "finding_id": "telemetry_no_opt_out",
+      "source": "ai_review",
+      "title": "No opt-out mechanism for telemetry collection",
+      "severity": "medium",
+      "file_path": "src/telemetry/metrics.py",
+      "line": 24,
+      "description": "The metrics module has no opt-out flag or configuration check. Depending on deployment context, collecting usage data without an opt-out may conflict with privacy requirements.",
+      "required": false,
+      "false_positive": false
+    }
+  ],
+  "static_analysis": {
+    "summary": "License scanner detected one critical blocker (GPL-3.0 incompatibility) and one policy violation (unpinned version).",
+    "finding_ids": ["license_incompatibility", "unpinned_version"]
+  },
+  "test_results": {
+    "status": "passed",
+    "summary": "All unit tests pass. No test coverage for the new telemetry module.",
+    "checks": ["unit", "lint", "type-check"],
+    "finding_ids": []
+  },
+  "ai_review": {
+    "summary": "AI review flags the missing opt-out mechanism in the telemetry module as a potential privacy concern for enterprise deployments.",
+    "finding_ids": ["telemetry_no_opt_out"]
+  },
+  "expected_decision": "reject",
+  "required_comment_ids": ["license_incompatibility"],
+  "inspect_rewards": {
+    "requirements.txt": 0.1,
+    "src/telemetry/metrics.py": 0.05
+  },
+  "reward_weights": {
+    "view_pr": 0.05,
+    "inspect_file": 0.1,
+    "run_static_analysis": 0.15,
+    "run_tests": 0.05,
+    "read_policy": 0.1,
+    "request_ai_review": 0.05,
+    "comment_required_finding": 0.2,
+    "decision": 0.3
+  }
+}

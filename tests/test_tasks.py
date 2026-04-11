@@ -132,3 +132,73 @@ def test_dependency_confusion_wrong_decision_scores_zero_decision() -> None:
     assert observation.final_decision == "approve"
     # Decision reward should be 0 for wrong decision
     assert env.state.cumulative_reward < 0.5
+
+
+def test_license_compliance_optimal_path_scores_one() -> None:
+    env = CodeReviewEnvironment()
+    env.reset(task_id="license_compliance_reject")
+
+    actions = [
+        CodeReviewAction(action_type="view_pr"),
+        CodeReviewAction(action_type="inspect_file", file_path="requirements.txt"),
+        CodeReviewAction(action_type="run_static_analysis"),
+        CodeReviewAction(action_type="run_tests"),
+        CodeReviewAction(action_type="read_policy"),
+        CodeReviewAction(action_type="request_ai_review"),
+        CodeReviewAction(
+            action_type="submit_comment",
+            file_path="requirements.txt",
+            finding_ids=["license_incompatibility"],
+            comment_text="Blocking: GPL-3.0 dependency is incompatible with MIT license.",
+        ),
+        CodeReviewAction(action_type="set_decision", decision="reject"),
+    ]
+
+    observation = None
+    for action in actions:
+        observation = env.step(action)
+
+    assert observation is not None
+    assert observation.done is True
+    assert observation.final_decision == "reject"
+    assert "license_incompatibility" in {
+        finding.finding_id for finding in observation.discovered_findings
+    }
+    assert env.state.cumulative_reward == 1.0
+
+
+def test_license_compliance_wrong_decision_scores_no_decision_reward() -> None:
+    """Approving a GPL-incompatible PR must not award decision reward."""
+    env = CodeReviewEnvironment()
+    env.reset(task_id="license_compliance_reject")
+
+    env.step(CodeReviewAction(action_type="view_pr"))
+    env.step(CodeReviewAction(action_type="run_static_analysis"))
+    observation = env.step(CodeReviewAction(action_type="set_decision", decision="approve"))
+
+    assert observation.done is True
+    assert observation.final_decision == "approve"
+    assert env.state.cumulative_reward < 0.5
+
+
+def test_efficiency_score_populated_after_episode_ends() -> None:
+    """efficiency_score must be set when the episode terminates."""
+    env = CodeReviewEnvironment()
+    env.reset(task_id="clean_refactor_approve")
+
+    # Use fewer than max_steps (7 steps, max=8) — efficiency should be > 0
+    actions = [
+        CodeReviewAction(action_type="view_pr"),
+        CodeReviewAction(action_type="inspect_file", file_path="src/formatting/formatter.py"),
+        CodeReviewAction(action_type="run_static_analysis"),
+        CodeReviewAction(action_type="run_tests"),
+        CodeReviewAction(action_type="read_policy"),
+        CodeReviewAction(action_type="request_ai_review"),
+        CodeReviewAction(action_type="set_decision", decision="approve"),
+    ]
+    for action in actions:
+        env.step(action)
+
+    assert env.state.efficiency_score > 0.0
+    assert env.state.efficiency_score <= 1.0
+    assert env.state.cumulative_reward == 1.0  # efficiency is separate — cumulative unaffected

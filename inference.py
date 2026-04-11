@@ -34,12 +34,29 @@ MAX_TOKENS = 220
 SUCCESS_SCORE_THRESHOLD = 0.8
 
 SYSTEM_PROMPT = (
-    "You are operating a deterministic pull-request review environment. "
-    "Return exactly one compact JSON object with keys action_type, file_path, "
-    "finding_ids, comment_text, and decision when relevant. "
-    "Valid action_type values are view_pr, inspect_file, run_static_analysis, "
-    "run_tests, read_policy, request_ai_review, submit_comment, and set_decision. "
-    "Never add prose outside the JSON object."
+    "You are an expert code reviewer operating a deterministic pull-request review environment.\n"
+    "Your goal is to reach a final approve or reject decision with all required findings covered.\n\n"
+    "STRATEGY (follow this order unless an action is already in Recent History):\n"
+    "1. view_pr — reveal the full PR summary.\n"
+    "2. inspect_file — inspect the most security-relevant changed file.\n"
+    "3. run_static_analysis — surface linting, security, and dependency findings.\n"
+    "4. run_tests — reveal test coverage and CI findings.\n"
+    "5. read_policy — understand the repository merge policy.\n"
+    "6. request_ai_review — get AI-generated finding notes.\n"
+    "7. submit_comment — post a blocking comment for every finding listed under "
+    "'Uncovered Required Findings'. Include all relevant finding_ids in one comment.\n"
+    "8. set_decision — approve only if no required findings are uncovered and "
+    "policy allows it; otherwise reject.\n\n"
+    "RULES:\n"
+    "- Never repeat an action type already in Recent History.\n"
+    "- Never call set_decision while Uncovered Required Findings is non-empty.\n"
+    "- Do not submit comments for false-positive or info-level findings.\n"
+    "- Return exactly one compact JSON object. No prose outside the JSON.\n\n"
+    "Valid action_type values: view_pr, inspect_file, run_static_analysis, run_tests, "
+    "read_policy, request_ai_review, submit_comment, set_decision.\n"
+    "JSON keys: action_type (always), file_path (inspect_file/submit_comment), "
+    "finding_ids (list, submit_comment), comment_text (submit_comment), "
+    "decision (approve/reject, set_decision)."
 )
 
 
@@ -230,6 +247,29 @@ def fallback_action(task_id: str, observation: Any) -> CodeReviewAction:
                 file_path="requirements.txt",
                 finding_ids=["shadowed_internal_package"],
                 comment_text="Blocking: the package name shadows an internal library and resolves to a public PyPI package owned by an unknown author. Remove or pin to the verified internal index before merge.",
+            )
+        return CodeReviewAction(action_type="set_decision", decision="reject")
+
+    if task_id == "license_compliance_reject":
+        if "file_diff" not in revealed:
+            return CodeReviewAction(
+                action_type="inspect_file",
+                file_path="requirements.txt",
+            )
+        if "static_analysis" not in revealed:
+            return CodeReviewAction(action_type="run_static_analysis")
+        if "tests" not in revealed:
+            return CodeReviewAction(action_type="run_tests")
+        if "policy" not in revealed:
+            return CodeReviewAction(action_type="read_policy")
+        if "ai_review" not in revealed:
+            return CodeReviewAction(action_type="request_ai_review")
+        if "license_incompatibility" in findings and not comment_covers(observation, "license_incompatibility"):
+            return CodeReviewAction(
+                action_type="submit_comment",
+                file_path="requirements.txt",
+                finding_ids=["license_incompatibility"],
+                comment_text="Blocking: analytics-toolkit is GPL-3.0 licensed which is incompatible with this project's MIT license. Remove or replace with a permissively licensed alternative before merge.",
             )
         return CodeReviewAction(action_type="set_decision", decision="reject")
 

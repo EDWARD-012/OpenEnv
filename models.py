@@ -146,4 +146,13 @@ class CodeReviewState(State):
     action_history: list[ActionTrace] = Field(
         default_factory=list, description="Compact action history."
     )
+    efficiency_score: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Normalized step-efficiency score: 1.0 when solved in minimum steps, "
+            "0.0 when all steps exhausted. Separate from cumulative_reward."
+        ),
+    )
 

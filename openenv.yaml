@@ -1,7 +1,26 @@
 spec_version: 1
 name: code_review_env
+display_name: "Automated Code Review Environment"
+description: >
+  A deterministic pull-request review simulation that challenges agents to
+  inspect diffs, run static analysis and tests, read policy, request AI review
+  notes, post structured finding comments, and make a final approve or reject
+  decision. Five tasks covering safe refactors, secret leaks, authorization
+  regressions, supply-chain attacks, and license compliance violations.
 type: space
 runtime: fastapi
 app: server.app:app
 port: 8000
-
+tags:
+  - openenv
+  - code-review
+  - security
+  - deterministic
+  - partial-credit-rewards
+author: "Ravi Kumar Gupta"
+tasks:
+  - clean_refactor_approve
+  - secret_leak_reject
+  - auth_policy_reject
+  - dependency_confusion_reject
+  - license_compliance_reject

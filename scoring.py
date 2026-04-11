@@ -45,3 +45,15 @@ def decision_reward(
 def remaining_budget(current_total: float) -> float:
     """Return how much cumulative reward remains before reaching 1.0."""
     return clamp_reward(1.0 - current_total)
+
+
+def step_efficiency_score(steps_taken: int, max_steps: int) -> float:
+    """Compute a normalized efficiency score based on how few steps were used.
+
+    Returns 1.0 when the episode ends in the minimum possible step (1),
+    and 0.0 when all steps are exhausted. Stored as a separate signal in
+    CodeReviewState so it does not affect cumulative_reward accounting.
+    """
+    if max_steps <= 1 or steps_taken >= max_steps:
+        return 0.0
+    return round((max_steps - steps_taken) / (max_steps - 1), 4)
